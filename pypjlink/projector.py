@@ -34,6 +34,7 @@ MUTE_VIDEO = 1
 MUTE_AUDIO = 2
 MUTE_STATES_REV = {
     '11': (True, False),
+    '20': (False, False),
     '21': (False, True),
     '31': (True, True),
     '30': (False, False),
@@ -60,9 +61,10 @@ class Projector(object):
         self.f.close()
 
     @classmethod
-    def from_address(cls, address, port=4352, encoding='utf-8'):
+    def from_address(cls, address, port=4352, encoding='utf-8', timeout = 2):
         """build a Projector from a ip address"""
         sock = socket.socket()
+        sock.settimeout(timeout)
         sock.connect((address, port))
         # in python 3 I need to specify newline, otherwise read hangs
         # in "PJLINK 0\r"
@@ -80,7 +82,7 @@ class Projector(object):
         # protocol. Don't take this as any kind of assurance that it's secure.
 
         data = protocol.read(self.f, 9, self.encoding)
-        assert data[:7] == 'PJLINK '
+        assert data[:7].upper() == 'PJLINK '
         security = data[7]
         if security == '0':
             return None
@@ -108,7 +110,7 @@ class Projector(object):
 
         # read the response, see if it's a failed auth
         data = protocol.read(self.f, 7, self.encoding)
-        if data == 'PJLINK ':
+        if data.upper() == 'PJLINK ':
             # should be a failed auth if we get that
             data += protocol.read(self.f, 5, self.encoding)
             assert data == 'PJLINK ERRA\r'

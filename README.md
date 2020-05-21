@@ -2,7 +2,7 @@
 
 Implementation of the PJLink Class 1 protocol to control projectors.
 
-Fork of pypjlink which is no longer maintained.
+Fork of pypjlink which is no longer maintained, with support for Optoma projectors
 
 ## Usage
 ```python
