@@ -61,7 +61,7 @@ class Projector(object):
         self.f.close()
 
     @classmethod
-    def from_address(cls, address, port=4352, encoding='utf-8', timeout = 2):
+    def from_address(cls, address, port=4352, encoding='utf-8', timeout=10):
         """build a Projector from a ip address"""
         sock = socket.socket()
         sock.settimeout(timeout)
