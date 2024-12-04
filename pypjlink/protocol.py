@@ -3,17 +3,6 @@
 import sys
 
 
-def read_until(f, term, encoding):
-    data = []
-    c = f.read(1)
-    while c != term:
-        data.append(c)
-        c = f.read(1)
-    data = ''.join(data)
-    if sys.version_info.major == 2:
-        data = data.decode(encoding)
-    return data
-
 def to_binary(body, param, sep=' '):
     assert body.isupper()
 
@@ -22,9 +11,13 @@ def to_binary(body, param, sep=' '):
 
     return '%1' + body + sep + param + '\r'
 
-def parse_response(f, encoding, data=''):
+async def parse_response(reader, encoding, data=''):
     if len(data) < 7:
-        data += read(f, 2 + 4 + 1 - len(data), encoding)
+        lookahead = (await reader.read(1)).decode(encoding)
+        if lookahead == '\n':
+            data += (await reader.read(2 + 4 + 1 - len(data))).decode(encoding)
+        else:
+            data += lookahead + (await reader.read(2 + 4 - len(data))).decode(encoding)
 
     header = data[0]
     assert header == '%'
@@ -42,19 +35,9 @@ def parse_response(f, encoding, data=''):
     sep = data[6]
     assert sep == '='
 
-    param = read_until(f, '\r', encoding)
+    param = (await reader.readuntil(b'\r')).decode(encoding)
 
-    return (body, param)
-
-# python 3 socket makefile is already unicode in text mode, i do the same on
-# python 2
-if sys.version_info.major == 2:
-    def read(f, n, encoding):
-        return f.read(n).decode(encoding)
-else:
-    def read(f, n, encoding):
-        return f.read(n)
-
+    return body, param.split('\r')[0]
 
 ERRORS = {
     'ERR1': 'undefined command',
@@ -63,12 +46,12 @@ ERRORS = {
     'ERR4': 'projector failure',
 }
 
-def send_command(f, req_body, req_param, encoding):
-    data = to_binary(req_body, req_param)
-    f.write(data)
-    f.flush()
+async def send_command(reader, writer, req_body, req_param, encoding):
+    data = to_binary(req_body, req_param).encode(encoding)
+    writer.write(data)
+    await writer.drain()
 
-    resp_body, resp_param = parse_response(f, encoding)
+    resp_body, resp_param = await parse_response(reader, encoding)
     assert resp_body == req_body
 
     if resp_param in ERRORS:
